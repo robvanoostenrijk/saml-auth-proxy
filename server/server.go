@@ -130,6 +130,7 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 		}))
 
 	}
+	http.Handle("/_signin", http.HandlerFunc(middleware.HandleStartAuthFlow))
 	http.Handle("/_health", http.HandlerFunc(proxy.health))
 	http.Handle("/", middleware.RequireAccount(app))
 
