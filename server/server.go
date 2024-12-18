@@ -7,12 +7,13 @@ import (
 	"crypto/x509"
 	"encoding/xml"
 	"fmt"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/crewjam/saml"
 	"github.com/crewjam/saml/samlsp"
@@ -111,6 +112,16 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 
 	app := http.HandlerFunc(proxy.handler)
 	http.Handle("/saml/", middleware)
+	http.Handle("/_verify", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		session := samlsp.SessionFromContext(r.Context())
+
+		if IsAnonymousSession(session) {
+			w.WriteHeader(401)
+			return
+		}
+
+		w.WriteHeader(200)
+	}))
 	http.Handle("/_health", http.HandlerFunc(proxy.health))
 	http.Handle("/", middleware.RequireAccount(app))
 
