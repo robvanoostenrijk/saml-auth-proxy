@@ -113,14 +113,17 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 	app := http.HandlerFunc(proxy.handler)
 	http.Handle("/saml/", middleware)
 	http.Handle("/_verify", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		session := samlsp.SessionFromContext(r.Context())
 
-		if IsAnonymousSession(session) {
+		session, err := middleware.Session.GetSession(r)
+
+		if session != nil {
+			w.WriteHeader(200)
+		}
+
+		if err == samlsp.ErrNoSession {
 			w.WriteHeader(401)
 			return
 		}
-
-		w.WriteHeader(200)
 	}))
 	http.Handle("/_health", http.HandlerFunc(proxy.health))
 	http.Handle("/", middleware.RequireAccount(app))
