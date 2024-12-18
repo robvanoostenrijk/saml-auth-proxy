@@ -84,6 +84,14 @@ func (p *Proxy) handler(respOutWriter http.ResponseWriter, reqIn *http.Request) 
 			return
 		}
 
+		if p.config.AuthVerify && reqIn.URL.Path == p.config.AuthVerifyPath {
+			p.logger.
+				With(zap.String("remoteAddr", reqIn.RemoteAddr)).
+				Debug("Responding with 401 to anonymous auth verify request")
+			respOutWriter.WriteHeader(401)
+			return
+		}
+
 	} else {
 		sessionClaims, ok := session.(samlsp.JWTSessionClaims)
 		if !ok {
