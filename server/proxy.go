@@ -79,6 +79,7 @@ func (p *Proxy) handler(respOutWriter http.ResponseWriter, reqIn *http.Request) 
 
 	var reqOut *http.Request
 	if IsAnonymousSession(session) {
+		p.logger.Info("Proxy: Anonymous")
 		reqOut = p.setupRequest(respOutWriter, reqIn)
 		if reqOut == nil {
 			return
@@ -93,6 +94,7 @@ func (p *Proxy) handler(respOutWriter http.ResponseWriter, reqIn *http.Request) 
 		}
 
 	} else {
+		p.logger.Info("Proxy: Session")
 		sessionClaims, ok := session.(samlsp.JWTSessionClaims)
 		if !ok {
 			p.logger.Error("session is not expected type")
