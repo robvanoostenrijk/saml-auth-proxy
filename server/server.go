@@ -114,22 +114,9 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 	http.Handle("/saml/", middleware)
 
 	if cfg.AuthVerify {
-
-		http.Handle(cfg.AuthVerifyPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-			session, err := middleware.Session.GetSession(r)
-
-			if session != nil {
-				w.WriteHeader(200)
-			}
-
-			if err == samlsp.ErrNoSession {
-				w.WriteHeader(401)
-				return
-			}
-		}))
-
+		http.Handle(cfg.AuthVerifyPath, authVerify(middleware))
 	}
+
 	http.Handle("/_signin", http.HandlerFunc(middleware.HandleStartAuthFlow))
 	http.Handle("/_health", http.HandlerFunc(proxy.health))
 	http.Handle("/", middleware.RequireAccount(app))
@@ -187,4 +174,23 @@ func setupHttpClient(idpCaFile string) (*http.Client, error) {
 	client := &http.Client{Transport: tr}
 
 	return client, nil
+}
+
+func authVerify(middleware *samlsp.Middleware) http.Handler {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		session, err := middleware.Session.GetSession(r)
+
+		if session != nil {
+			w.WriteHeader(200)
+			return
+		}
+
+		if err == samlsp.ErrNoSession {
+			w.WriteHeader(401)
+			return
+		}
+
+	})
 }
