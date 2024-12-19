@@ -111,13 +111,13 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 	}
 
 	app := http.HandlerFunc(proxy.handler)
-	http.Handle("/saml/", middleware)
-
 	if cfg.AuthVerify {
 		http.Handle(cfg.AuthVerifyPath, authVerify(middleware))
 	}
 
 	http.Handle("/_signin", http.HandlerFunc(middleware.HandleStartAuthFlow))
+
+	http.Handle("/saml/", middleware)
 	http.Handle("/_health", http.HandlerFunc(proxy.health))
 	http.Handle("/", middleware.RequireAccount(app))
 
@@ -183,7 +183,7 @@ func authVerify(middleware *samlsp.Middleware) http.Handler {
 		session, err := middleware.Session.GetSession(r)
 
 		if session != nil {
-			w.WriteHeader(200)
+			w.WriteHeader(204)
 			return
 		}
 
