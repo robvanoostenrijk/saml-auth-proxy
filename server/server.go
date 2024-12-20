@@ -115,7 +115,14 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 		http.Handle(cfg.AuthVerifyPath, authVerify(middleware))
 	}
 
-	http.Handle("/saml/sign_in", http.HandlerFunc(middleware.HandleStartAuthFlow))
+	//http.Handle("/saml/sign_in", http.HandlerFunc(middleware.HandleStartAuthFlow))
+
+	http.Handle("/saml/sign_in", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		r.URL.Path = "/code/"
+		middleware.HandleStartAuthFlow(w, r)
+
+	}))
 
 	http.Handle("/saml/", middleware)
 	http.Handle("/_health", http.HandlerFunc(proxy.health))
