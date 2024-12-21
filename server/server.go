@@ -135,6 +135,10 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 		return err
 	}
 
+	go func() {
+		listener.Close()
+	}()
+
 	return http.Serve(listener, nil)
 }
 

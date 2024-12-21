@@ -79,22 +79,12 @@ func (p *Proxy) handler(respOutWriter http.ResponseWriter, reqIn *http.Request) 
 
 	var reqOut *http.Request
 	if IsAnonymousSession(session) {
-		p.logger.Info("Proxy: Anonymous")
 		reqOut = p.setupRequest(respOutWriter, reqIn)
 		if reqOut == nil {
 			return
 		}
 
-		if p.config.AuthVerify && reqIn.URL.Path == p.config.AuthVerifyPath {
-			p.logger.
-				With(zap.String("remoteAddr", reqIn.RemoteAddr)).
-				Debug("Responding with 401 to anonymous auth verify request")
-			respOutWriter.WriteHeader(401)
-			return
-		}
-
 	} else {
-		p.logger.Info("Proxy: Session")
 		sessionClaims, ok := session.(samlsp.JWTSessionClaims)
 		if !ok {
 			p.logger.Error("session is not expected type")
