@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -23,7 +22,7 @@ import (
 
 const fetchMetadataTimeout = 30 * time.Second
 
-func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
+func Start(ctx context.Context, listener net.Listener, logger *zap.Logger, cfg *Config) error {
 	keyPair, err := tls.LoadX509KeyPair(cfg.SpCertPath, cfg.SpKeyPath)
 	if err != nil {
 		return fmt.Errorf("failed to load SP key and certificate: %w", err)
@@ -128,28 +127,7 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 		With(zap.String("binding", cfg.Bind)).
 		Info("Serving requests")
 
-	var bindType, bind = httpBinding(cfg.Bind)
-
-	listener, err := net.Listen(bindType, bind)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		listener.Close()
-	}()
-
 	return http.Serve(listener, nil)
-}
-
-func httpBinding(bind string) (string, string) {
-
-	if strings.HasPrefix(bind, "unix:") {
-		return "unix", strings.TrimLeft(bind, "unix:")
-	} else {
-		return "tcp", bind
-	}
-
 }
 
 func fetchMetadata(ctx context.Context, client *http.Client, idpMetadataUrl *url.URL) (*saml.EntityDescriptor, error) {
