@@ -7,10 +7,12 @@ import (
 	"crypto/x509"
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -116,14 +118,6 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 	}
 
 	http.Handle("/saml/sign_in", http.HandlerFunc(middleware.HandleStartAuthFlow))
-	/*
-		http.Handle("/saml/sign_in", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-			r.URL.Path = "/code/"
-			middleware.HandleStartAuthFlow(w, r)
-
-		}))
-	*/
 	http.Handle("/saml/", middleware)
 	http.Handle("/_health", http.HandlerFunc(proxy.health))
 	http.Handle("/", middleware.RequireAccount(app))
@@ -133,12 +127,30 @@ func Start(ctx context.Context, logger *zap.Logger, cfg *Config) error {
 		With(zap.String("backendUrl", cfg.BackendUrl)).
 		With(zap.String("binding", cfg.Bind)).
 		Info("Serving requests")
-	return http.ListenAndServe(cfg.Bind, nil)
+
+	var bindType, bind = httpBinding(cfg.Bind)
+
+	listener, err := net.Listen(bindType, bind)
+	if err != nil {
+		return err
+	}
+
+	return http.Serve(listener, nil)
+}
+
+func httpBinding(bind string) (string, string) {
+
+	if strings.HasPrefix(bind, "unix:") {
+		return "unix", strings.TrimLeft(bind, "unix:")
+	} else {
+		return "tcp", bind
+	}
+
 }
 
 func fetchMetadata(ctx context.Context, client *http.Client, idpMetadataUrl *url.URL) (*saml.EntityDescriptor, error) {
 	if idpMetadataUrl.Scheme == "file" {
-		data, err := ioutil.ReadFile(idpMetadataUrl.Path)
+		data, err := os.ReadFile(idpMetadataUrl.Path)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read IdP metadata file.: %w", err)
 		}
@@ -164,7 +176,7 @@ func setupHttpClient(idpCaFile string) (*http.Client, error) {
 		rootCAs = x509.NewCertPool()
 	}
 
-	certs, err := ioutil.ReadFile(idpCaFile)
+	certs, err := os.ReadFile(idpCaFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read IdP CA file: %w", err)
 	}
